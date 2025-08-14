@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>充电费用计算器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        select, input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        .result h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .result-item {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .highlight {
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>电动车充电费用计算器</h1>
+        
+        <div class="form-group">
+            <label for="carType">选择电车类型：</label>
+            <select id="carType">
+                <option value="1.2">1.2度电</option>
+                <option value="0.576">0.576度电</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="power">充电功率（W）：</label>
+            <input type="number" id="power" min="0" max="1000" placeholder="例如：300">
+        </div>
+        
+        <div class="form-group">
+            <label for="startTime">充电开始时间：</label>
+            <input type="time" id="startTime">
+        </div>
+        
+        <button onclick="calculateCost()">计算费用</button>
+        
+        <div id="result" class="result" style="display: none;">
+            <h3>计算结果</h3>
+            <div class="result-item">总充电度数：<span id="totalKWh" class="highlight"></span> 度</div>
+            <div class="result-item">总充电时间：<span id="totalHours" class="highlight"></span> 小时</div>
+            
+            <h4>方案一（按充电量收费）：</h4>
+            <div class="result-item">电费：<span id="plan1ElecCost" class="highlight"></span> 元</div>
+            <div class="result-item">服务费：<span id="plan1ServiceCost" class="highlight"></span> 元</div>
+            <div class="result-item">总费用：<span id="plan1Total" class="highlight"></span> 元</div>
+            
+            <h4>方案二（按功率计时收费）：</h4>
+            <div class="result-item">电费：<span id="plan2ElecCost" class="highlight"></span> 元</div>
+            <div class="result-item">服务费：<span id="plan2ServiceCost" class="highlight"></span> 元</div>
+            <div class="result-item">总费用：<span id="plan2Total" class="highlight"></span> 元</div>
+        </div>
+    </div>
+
+    <script>
+        function calculateCost() {
+            // 获取输入值
+            const carType = parseFloat(document.getElementById('carType').value);
+            const power = parseInt(document.getElementById('power').value);
+            const startTime = document.getElementById('startTime').value;
+            
+            if (!power || !startTime) {
+                alert('请填写所有字段！');
+                return;
+            }
+            
+            // 计算总充电时间（小时）
+            const totalHours = carType / (power / 1000);
+            
+            // 解析开始时间
+            const [startHour, startMin] = startTime.split(':').map(Number);
+            const startTotalMin = startHour * 60 + startMin;
+            const endTotalMin = startTotalMin + totalHours * 60;
+            
+            // 计算白天和夜间的充电时间
+            let dayMin = 0;
+            let nightMin = 0;
+            
+            for (let i = 0; i < Math.ceil(totalHours * 60); i++) {
+                const currentMin = (startTotalMin + i) % (24 * 60);
+                if (currentMin >= 6 * 60 && currentMin < 22 * 60) {
+                    dayMin++;
+                } else {
+                    nightMin++;
+                }
+            }
+            
+            const dayHours = dayMin / 60;
+            const nightHours = nightMin / 60;
+            
+            // 方案一：按充电量收费
+            const dayRate1 = 0.641;
+            const nightRate1 = 0.331;
+            const serviceRate1 = 0.5;
+            
+            const dayCost1 = dayHours * power / 1000 * dayRate1;
+            const nightCost1 = nightHours * power / 1000 * nightRate1;
+            const elecCost1 = dayCost1 + nightCost1;
+            const serviceCost1 = carType * serviceRate1;
+            const totalCost1 = elecCost1 + serviceCost1;
+            
+            // 方案二：按功率计时收费
+            const dayRate2 = 0.641;
+            const nightRate2 = 0.331;
+            
+            let serviceRate2;
+            if (power <= 150) serviceRate2 = 0.10;
+            else if (power <= 250) serviceRate2 = 0.12;
+            else if (power <= 350) serviceRate2 = 0.14;
+            else if (power <= 450) serviceRate2 = 0.16;
+            else if (power <= 550) serviceRate2 = 0.18;
+            else serviceRate2 = 0.20;
+            
+            const dayCost2 = dayHours * power / 1000 * dayRate2;
+            const nightCost2 = nightHours * power / 1000 * nightRate2;
+            const elecCost2 = dayCost2 + nightCost2;
+            const serviceCost2 = totalHours * serviceRate2;
+            const totalCost2 = elecCost2 + serviceCost2;
+            
+            // 显示结果
+            document.getElementById('totalKWh').textContent = carType.toFixed(3);
+            document.getElementById('totalHours').textContent = totalHours.toFixed(2);
+            
+            document.getElementById('plan1ElecCost').textContent = elecCost1.toFixed(2);
+            document.getElementById('plan1ServiceCost').textContent = serviceCost1.toFixed(2);
+            document.getElementById('plan1Total').textContent = totalCost1.toFixed(2);
+            
+            document.getElementById('plan2ElecCost').textContent = elecCost2.toFixed(2);
+            document.getElementById('plan2ServiceCost').textContent = serviceCost2.toFixed(2);
+            document.getElementById('plan2Total').textContent = totalCost2.toFixed(2);
+            
+            document.getElementById('result').style.display = 'block';
+        }
+    </script>
+</body>
+
